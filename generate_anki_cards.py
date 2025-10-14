@@ -114,7 +114,6 @@ def call_deepseek_api(prompt):
     response = client.chat.completions.create(
         model="deepseek-chat",
         messages=[
-            # {"role": "system", "content": "You are a helpful assistant"},
             {"role": "user", "content": prompt},
         ],
         stream=False
@@ -122,9 +121,11 @@ def call_deepseek_api(prompt):
 
     return response.choices[0].message.content
 
-def save_md_file(file_content, md_path=MD_PATH):
-    with open(md_path, "w", encoding="utf-8") as f:
+def save_md_file(file_content, md_path=MD_PATH, mode='w'):
+    with open(md_path, mode, encoding="utf-8") as f:
         f.write(file_content)
+        if mode == 'a' and not file_content.endswith('\n'):
+            f.write('\n')
 
 def generate_anki_deck(md_file=MD_PATH, output_file=ANKI_PATH):
     try:
@@ -147,6 +148,10 @@ def generate_anki_deck(md_file=MD_PATH, output_file=ANKI_PATH):
         print("Error: mdanki not found. Make sure Node.js is installed and run: npm install")
         return False
 
+def chunk_list(lst, chunk_size):
+    """Split list into chunks of specified size"""
+    return [lst[i:i + chunk_size] for i in range(0, len(lst), chunk_size)]
+
 def main():
     args = parse_arguments()
 
@@ -156,28 +161,51 @@ def main():
         if not os.path.exists(args.markdown):
             print(f"Error: Markdown file {args.markdown} not found")
             sys.exit(1)
-        md_filename = args.markdown
     else:
-        # Generate prompt and call API (your existing code)
+        # Generate prompt and call API in chunks
         chinese_words = read_txt_file(args.input)
-        print(f"loaded {len(chinese_words)} chinese words")
+        print(f"Loaded {len(chinese_words)} Chinese words")
+        
+        # Clear the markdown file to start fresh
+        if os.path.exists(args.markdown):
+            os.remove(args.markdown)
+            print(f"Cleared existing markdown file: {args.markdown}")
 
-        prompt = create_prompt(chinese_words)
-        print("Calling DeepSeek API...")
+        # Split words into chunks of 8
+        chunk_size = 8
+        chunks = chunk_list(chinese_words, chunk_size)
+        print(f"Processing {len(chunks)} chunks of {chunk_size} words each...")
         
         if not DEEPSEEK_API_KEY:
             print("Error: Please set DEEPSEEK_API_KEY environment variable")
             sys.exit(1)
             
-        markdown_content = call_deepseek_api(prompt)
-        print("Received response from Deepseek!")
+        # Process each chunk
+        for i, chunk in enumerate(chunks, 1):
+            print(f"Processing chunk {i}/{len(chunks)}: {chunk}")
+            
+            prompt = create_prompt(chunk)
+            markdown_content = call_deepseek_api(prompt)
+            
+            if markdown_content:
+                # Append to the markdown file
+                mode = 'a' if i > 1 else 'w'
+                save_md_file(markdown_content, args.markdown, mode)
+                
+                # Add spacing between chunks if not the last one
+                if i < len(chunks):
+                    save_md_file('\n\n', args.markdown, 'a')
+                
+                print(f"✓ Successfully processed chunk {i}/{len(chunks)}")
+            else:
+                print(f"✗ Failed to get response for chunk {i}")
+                sys.exit(1)
+            
+            # Small delay to be respectful to the API
+            import time
+            time.sleep(1)
         
-        if markdown_content:
-            save_md_file(markdown_content, args.markdown)
-            print(f"Markdown file saved: {args.markdown}")
-        else:
-            print("Failed to get response from DeepSeek API")
-            sys.exit(1)
+        print(f"Markdown file saved: {args.markdown}")
 
     # Generate Anki package (always do this)
     print("Generating Anki package...")
