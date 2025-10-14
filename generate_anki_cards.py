@@ -282,8 +282,8 @@ def main() -> None:
             os.remove(args.markdown)
             print(f"Cleared existing markdown file: {args.markdown}")
 
-        # Split words into chunks of 8
-        chunk_size = 8
+        # Split words into chunks of 6
+        chunk_size = 6
         chunks = chunk_list(chinese_words, chunk_size)
         print(f"Processing {len(chunks)} chunks of {chunk_size} words each...")
 
