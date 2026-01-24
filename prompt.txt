@@ -27,6 +27,7 @@ Please analyze each word using the following structured framework:
     *   Summarize the core concept behind the word. How can one use this concept as a lens for viewing life, relationships, or society? Offer an analogy if helpful.
 
 Analyze each word on the list individually and thoroughly.
+Do not be influenced by other words provided in the list. For example, do NOT try to relate two words provided.
 ONLY RESPOND WITH THE ANSWERS TO THE QUERY. DO NOT PROVIDE ANY OTHER STATEMENTS.
 
 Example

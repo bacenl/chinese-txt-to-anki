@@ -48,7 +48,7 @@ def create_prompt(words: list[str]) -> str:
     words_text = "\n".join(words)
     
     # Replace placeholder in template with actual words
-    prompt = template.replace("{words}", words_text)
+    prompt = template.replace("{words_text}", words_text)
     
     return prompt
 
