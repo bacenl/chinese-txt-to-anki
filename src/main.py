@@ -6,12 +6,12 @@ import sys
 
 from dotenv import load_dotenv
 
-from cache import load_history, save_to_history
-from api import (
+from .cache import load_history, save_to_history
+from .api import (
     create_prompt,
     call_deepseek_api,
 )
-from processing import (
+from .processing import (
     read_txt_file,
     save_md_file,
     generate_anki_deck,
