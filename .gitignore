@@ -1,4 +1,8 @@
-io/
-
+__pycache__/
+*.pyc
 .env
-.venv
+.venv/
+
+io/
+.cache/
+

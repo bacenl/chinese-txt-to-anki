@@ -1,0 +1,55 @@
+I want to understand the following Chinese word(s) in deep, cultural, and practical context:
+
+{words_text}
+
+Please analyze each word using the following structured framework:
+
+    0. **Word**
+    *   Provide the word
+    *   Provide the pinyin (on a separate line)
+    *   State the word type (noun, verb, adjectival verb, adjective, adverb, etc.)
+    *   Prepend with ## 
+
+1.  **Core Meaning & Character Breakdown:**
+    *   Provide the pinyin and core English translation(s).
+    *   Deconstruct the character(s) etymologically and visually. Explain the radicals and components and what they contribute to the overall meaning.
+
+2.  **Key Dimensions & Nuances:**
+    *   Go beyond the dictionary definition. Explain the word's philosophical, emotional, or social connotations.
+    *   If applicable, mention its origin (e.g., Classical Chinese, Buddhist influence, modern slang).
+
+3.  **Usage in Everyday Life:**
+    *   Provide common words, phrases, or idioms that use this character.
+    *   Give a short, practical example sentence for each, with pinyin and English translation.
+    *   Explain the context or feeling these phrases evoke.
+
+4.  **A Guiding Philosophy:**
+    *   Summarize the core concept behind the word. How can one use this concept as a lens for viewing life, relationships, or society? Offer an analogy if helpful.
+
+Analyze each word on the list individually and thoroughly.
+ONLY RESPOND WITH THE ANSWERS TO THE QUERY. DO NOT PROVIDE ANY OTHER STATEMENTS.
+
+Example
+## 混账 
+
+(hùnzhàng)
+Noun
+
+**1. Core Meaning & Character Breakdown:**
+- **Translation:** Scoundrel; bastard; son of a bitch (a severe insult).
+- **Breakdown:**
+    - **混 (hùn):** 'To mix,' 'to confuse,' 'muddled.' Carries a sense of being irresponsible, muddle-headed, or just getting by (e.g., 混日子, to idle away one's life).
+    - **账 (zhàng):** 'Account,' 'bill,' 'debt.' In historical context, keeping accurate accounts was a matter of honor and trust.
+
+**2. Key Dimensions & Nuances:**
+- This is a powerful curse word. It originally implied someone who has muddled their accounts—a dishonest, untrustworthy person who doesn't keep their word. It's now a general-purpose insult questioning someone's character and moral standing, often with a connotation of anger and contempt.
+
+**3. Usage in Everyday Life:**
+- It's used as a direct insult or an exclamation of fury.
+    - **Phrase:** 你这个混账！ (Nǐ zhège hùnzhàng!)
+    - **Example:** '你竟敢骗我，混账！' (Nǐ jìng gǎn piàn wǒ, hùnzhàng!) - 'How dare you cheat me, you bastard!'
+    - **Feeling:** Intense anger, betrayal, and deep disrespect.
+
+**4. A Guiding Philosophy:**
+- It reflects a cultural emphasis on integrity and trust, especially in financial and social obligations. To call someone 混账 is to say they have violated the fundamental trust that holds relationships together.
+
