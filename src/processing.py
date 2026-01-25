@@ -1,6 +1,44 @@
 """Processing module for handling files and Anki deck generation."""
 
+import os
 import subprocess
+from datetime import datetime
+from dotenv import load_dotenv
+
+load_dotenv()
+
+OUTPUT_MD_PATH = os.getenv("OUTPUT_MD_PATH")
+OUTPUT_ANKI_PATH = os.getenv("OUTPUT_ANKI_PATH")
+
+CHUNKS_PER_FILE = 8
+
+
+def create_timestamped_folders() -> tuple[str, str]:
+    """Create timestamped output folders for markdown and apkg files.
+    
+    Returns:
+        Tuple of (md_folder_path, apkg_folder_path)
+        
+    Example:
+        >>> md_folder, apkg_folder = create_timestamped_folders()
+        >>> print(md_folder)
+        io/output_md/25-01-2026_12-49-12
+    """
+    timestamp = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
+    
+    # Base directories from environment variables
+    base_md = OUTPUT_MD_PATH or "io/output_md"
+    base_apkg = OUTPUT_ANKI_PATH or "io/output_apkg"
+    
+    # Timestamped subdirectories
+    md_folder = os.path.join(base_md, timestamp)
+    apkg_folder = os.path.join(base_apkg, timestamp)
+    
+    os.makedirs(md_folder, exist_ok=True)
+    os.makedirs(apkg_folder, exist_ok=True)
+    
+    return md_folder, apkg_folder
+
 
 
 def read_txt_file(input_path: str) -> list[str]:
@@ -36,6 +74,9 @@ def save_md_file(file_content: str, md_path: str, mode: str = "w") -> None:
         >>> save_md_file("# Heading", "output.md")
         >>> save_md_file("More content", "output.md", "a")
     """
+    # Ensure parent directory exists
+    os.makedirs(os.path.dirname(md_path), exist_ok=True)
+    
     with open(md_path, mode, encoding="utf-8") as f:
         f.write(file_content)
         if mode == "a" and not file_content.endswith("\n"):

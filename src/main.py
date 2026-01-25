@@ -6,13 +6,15 @@ import sys
 
 from dotenv import load_dotenv
 
-from .cache import load_history, save_to_history
-from .api import (
+from cache import load_history, save_to_history
+from api import (
     create_prompt,
     call_deepseek_api,
 )
-from .processing import (
+from processing import (
+    CHUNKS_PER_FILE,
     read_txt_file,
+    create_timestamped_folders,
     save_md_file,
     generate_anki_deck,
     chunk_list,
@@ -111,25 +113,14 @@ def main() -> None:
                 print("All words have been previously parsed. Nothing to do!")
                 print("Use --skip-history flag to reprocess all words.")
                 sys.exit(0)
-        if not args.skip_history:
-            original_count = len(chinese_words)
-            chinese_words = [word for word in chinese_words if word not in history]
-            filtered_count = original_count - len(chinese_words)
-            
-            if filtered_count > 0:
-                print(f"Filtered out {filtered_count} previously parsed words")
-            
-            if not chinese_words:
-                print("All words have been previously parsed. Nothing to do!")
-                print("Use --skip-history flag to reprocess all words.")
-                sys.exit(0)
         
         print(f"Processing {len(chinese_words)} new words")
 
-        # Clear the markdown file to start fresh
-        if os.path.exists(args.markdown):
-            os.remove(args.markdown)
-            print(f"Cleared existing markdown file: {args.markdown}")
+        # Create timestamped output folders
+        md_folder, apkg_folder = create_timestamped_folders()
+        print(f"Created output folders:")
+        print(f"  Markdown: {md_folder}/")
+        print(f"  Anki: {apkg_folder}/")
 
         # Split words into chunks of 6
         chunk_size = 6
@@ -142,6 +133,9 @@ def main() -> None:
 
         # Process each chunk
         all_processed_words = []
+        current_file_index = 1
+        current_file_chunks = []
+        
         for i, chunk in enumerate(chunks, 1):
             print(f"Processing chunk {i}/{len(chunks)}: {chunk}")
 
@@ -149,14 +143,9 @@ def main() -> None:
             markdown_content = call_deepseek_api(prompt, DEEPSEEK_API_KEY)
 
             if markdown_content:
-                # Append to the markdown file
-                mode = "a" if i > 1 else "w"
-                save_md_file(markdown_content, args.markdown, mode)
-
-                # Add spacing between chunks if not the last one
-                if i < len(chunks):
-                    save_md_file("\n\n", args.markdown, "a")
-
+                # Add to current file's chunks
+                current_file_chunks.append(markdown_content)
+                
                 # Track successfully processed words from this chunk
                 all_processed_words.extend(chunk)
                 
@@ -164,6 +153,29 @@ def main() -> None:
                 save_to_history(chunk)
 
                 print(f"✓ Successfully processed chunk {i}/{len(chunks)}")
+                
+                # Check if we should save the file (every CHUNKS_PER_FILE chunks or last chunk)
+                if i % CHUNKS_PER_FILE == 0 or i == len(chunks):
+                    # Create output files for this batch
+                    md_file = os.path.join(md_folder, f"output_{current_file_index}.md")
+                    apkg_file = os.path.join(apkg_folder, f"output_{current_file_index}.apkg")
+                    
+                    # Combine all chunks for this file
+                    combined_content = "\n\n".join(current_file_chunks)
+                    save_md_file(combined_content, md_file, "w")
+                    
+                    # Generate Anki deck for this batch
+                    if generate_anki_deck(md_file, apkg_file):
+                        print(f"  → Saved file {current_file_index}: {md_file}")
+                        print(f"  → Saved file {current_file_index}: {apkg_file}")
+                    else:
+                        print(f"✗ Failed to generate Anki deck for file {current_file_index}")
+                        sys.exit(1)
+                    
+                    # Reset for next file
+                    current_file_index += 1
+                    current_file_chunks = []
+                    
             else:
                 print(f"✗ Failed to get response for chunk {i}")
                 sys.exit(1)
@@ -172,16 +184,12 @@ def main() -> None:
             import time
             time.sleep(1)
 
-        print(f"Markdown file saved: {args.markdown}")
+        print(f"\n{'='*60}")
+        print(f"Pipeline completed successfully!")
         print(f"Saved {len(all_processed_words)} words to history")
-
-    # Generate Anki package (always do this)
-    print("Generating Anki package...")
-    if generate_anki_deck(args.markdown, args.output):
-        print("Pipeline completed successfully!")
-        print(f"Anki package created: {args.output}")
-    else:
-        print("Failed to generate Anki package")
+        print(f"Generated {current_file_index - 1} markdown files in: {md_folder}/")
+        print(f"Generated {current_file_index - 1} Anki packages in: {apkg_folder}/")
+        print(f"{'='*60}")
 
 
 if __name__ == "__main__":
