@@ -6,12 +6,12 @@ import sys
 
 from dotenv import load_dotenv
 
-from cache import load_history, save_to_history
-from api import (
+from .cache import load_history, save_to_history
+from .api import (
     create_prompt,
     call_deepseek_api,
 )
-from processing import (
+from .processing import (
     CHUNKS_PER_FILE,
     read_txt_file,
     create_timestamped_folders,
@@ -30,11 +30,13 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 def parse_arguments() -> argparse.Namespace:
     """Parse command line arguments.
-    
+
     Returns:
         argparse.Namespace: Parsed command line arguments.
     """
-    parser = argparse.ArgumentParser(description="Generate Anki cards from Chinese words")
+    parser = argparse.ArgumentParser(
+        description="Generate Anki cards from Chinese words"
+    )
     parser.add_argument(
         "--no-api",
         "-na",
@@ -65,13 +67,19 @@ def parse_arguments() -> argparse.Namespace:
         action="store_true",
         help="Skip filtering out previously parsed words",
     )
+    parser.add_argument(
+        "--deck-name",
+        "-d",
+        default="Chinese Vocabulary",
+        help="Name of the Anki deck to import cards to (default: Chinese Vocabulary)",
+    )
 
     return parser.parse_args()
 
 
 def main() -> None:
     """Main function to orchestrate the Anki card generation pipeline.
-    
+
     Steps:
     1. Parse command line arguments
     2. Read Chinese words from input file
@@ -92,28 +100,28 @@ def main() -> None:
         # Load history and read words
         history = load_history() if not args.skip_history else set()
         chinese_words = read_txt_file(args.input)
-        
+
         if history:
             print(f"Loaded {len(history)} previously parsed words from history")
-        
+
         print(f"Loaded {len(chinese_words)} Chinese words from input file")
-        
+
         # Filter out previously parsed words
         if not args.skip_history:
             original_count = len(chinese_words)
             filtered_words = [word for word in chinese_words if word in history]
             chinese_words = [word for word in chinese_words if word not in history]
             filtered_count = len(filtered_words)
-            
+
             if filtered_count > 0:
                 print(f"Filtered out {filtered_count} previously parsed words:")
                 print(f"  {', '.join(filtered_words)}")
-            
+
             if not chinese_words:
                 print("All words have been previously parsed. Nothing to do!")
                 print("Use --skip-history flag to reprocess all words.")
                 sys.exit(0)
-        
+
         print(f"Processing {len(chinese_words)} new words")
 
         # Create timestamped output folders
@@ -135,7 +143,7 @@ def main() -> None:
         all_processed_words = []
         current_file_index = 1
         current_file_chunks = []
-        
+
         for i, chunk in enumerate(chunks, 1):
             print(f"Processing chunk {i}/{len(chunks)}: {chunk}")
 
@@ -145,51 +153,56 @@ def main() -> None:
             if markdown_content:
                 # Add to current file's chunks
                 current_file_chunks.append(markdown_content)
-                
+
                 # Track successfully processed words from this chunk
                 all_processed_words.extend(chunk)
-                
+
                 # Save this chunk to history immediately after successful processing
                 save_to_history(chunk)
 
                 print(f"✓ Successfully processed chunk {i}/{len(chunks)}")
-                
+
                 # Check if we should save the file (every CHUNKS_PER_FILE chunks or last chunk)
                 if i % CHUNKS_PER_FILE == 0 or i == len(chunks):
                     # Create output files for this batch
                     md_file = os.path.join(md_folder, f"output_{current_file_index}.md")
-                    apkg_file = os.path.join(apkg_folder, f"output_{current_file_index}.apkg")
-                    
+                    apkg_file = os.path.join(
+                        apkg_folder, f"output_{current_file_index}.apkg"
+                    )
+
                     # Combine all chunks for this file
                     combined_content = "\n\n".join(current_file_chunks)
                     save_md_file(combined_content, md_file, "w")
-                    
+
                     # Generate Anki deck for this batch
-                    if generate_anki_deck(md_file, apkg_file):
+                    if generate_anki_deck(md_file, apkg_file, args.deck_name):
                         print(f"  → Saved file {current_file_index}: {md_file}")
                         print(f"  → Saved file {current_file_index}: {apkg_file}")
                     else:
-                        print(f"✗ Failed to generate Anki deck for file {current_file_index}")
+                        print(
+                            f"✗ Failed to generate Anki deck for file {current_file_index}"
+                        )
                         sys.exit(1)
-                    
+
                     # Reset for next file
                     current_file_index += 1
                     current_file_chunks = []
-                    
+
             else:
                 print(f"✗ Failed to get response for chunk {i}")
                 sys.exit(1)
 
             # Small delay to be respectful to the API
             import time
+
             time.sleep(1)
 
-        print(f"\n{'='*60}")
+        print(f"\n{'=' * 60}")
         print(f"Pipeline completed successfully!")
         print(f"Saved {len(all_processed_words)} words to history")
         print(f"Generated {current_file_index - 1} markdown files in: {md_folder}/")
         print(f"Generated {current_file_index - 1} Anki packages in: {apkg_folder}/")
-        print(f"{'='*60}")
+        print(f"{'=' * 60}")
 
 
 if __name__ == "__main__":
