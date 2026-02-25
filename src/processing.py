@@ -24,8 +24,8 @@ def create_timestamped_folders() -> tuple[str, str]:
         >>> print(md_folder)
         io/output_md/25-01-2026_12-49-12
     """
-    timestamp = datetime.now().strftime("%d-%m-%Y_%H-%M-%S")
-    
+    timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+
     # Base directories from environment variables
     base_md = OUTPUT_MD_PATH or "io/output_md"
     base_apkg = OUTPUT_ANKI_PATH or "io/output_apkg"
