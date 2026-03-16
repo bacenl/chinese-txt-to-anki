@@ -62,10 +62,10 @@ def parse_arguments() -> argparse.Namespace:
         help=f"Markdown file to use/generate (default: {OUTPUT_MD_PATH})",
     )
     parser.add_argument(
-        "--skip-history",
-        "-sh",
+        "--ignore-history",
+        "-ih",
         action="store_true",
-        help="Skip filtering out previously parsed words",
+        help="Parse all input words, even if they appear in .cache/history.txt",
     )
     parser.add_argument(
         "--deck-name",
@@ -83,7 +83,7 @@ def main() -> None:
     Steps:
     1. Parse command line arguments
     2. Read Chinese words from input file
-    3. Filter out previously parsed words (unless --skip-history)
+    3. Filter out previously parsed words (unless --ignore-history)
     4. Process words in chunks via DeepSeek API
     5. Save processed words to history
     6. Generate Anki package from markdown
@@ -98,7 +98,7 @@ def main() -> None:
             sys.exit(1)
     else:
         # Load history and read words
-        history = load_history() if not args.skip_history else set()
+        history = load_history() if not args.ignore_history else set()
         chinese_words = read_txt_file(args.input)
 
         if history:
@@ -107,7 +107,7 @@ def main() -> None:
         print(f"Loaded {len(chinese_words)} Chinese words from input file")
 
         # Filter out previously parsed words
-        if not args.skip_history:
+        if not args.ignore_history:
             original_count = len(chinese_words)
             filtered_words = [word for word in chinese_words if word in history]
             chinese_words = [word for word in chinese_words if word not in history]
@@ -119,7 +119,7 @@ def main() -> None:
 
             if not chinese_words:
                 print("All words have been previously parsed. Nothing to do!")
-                print("Use --skip-history flag to reprocess all words.")
+                print("Use --ignore-history flag to reprocess all words.")
                 sys.exit(0)
 
         print(f"Processing {len(chinese_words)} new words")
