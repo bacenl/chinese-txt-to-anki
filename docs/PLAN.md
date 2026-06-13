@@ -137,7 +137,7 @@ Return `result.apkg_files` to the browser/dashboard. Do not infer generated file
 - [ ] Add retry/backoff around model calls with clear per-chunk failure reporting.
 - [x] Add provider key fallback from `MODEL_API_KEY` to `DEEPSEEK_API_KEY`.
 - [x] Add `.env.example` entries for `MODEL_BASE_URL`, `MODEL_NAME`, and `MODEL_API_KEY`.
-- [ ] Add exact dependency upper bounds in `pyproject.toml` (`openai>=1,<2`, `python-dotenv>=1,<2`) and refresh lockfile if present.
+- [x] Add exact dependency upper bounds in `pyproject.toml` (`openai>=1,<2`, `python-dotenv>=1,<2`) and refresh lockfile if present.
 - [ ] Add direct in-process dashboard integration in Hermes after this repo's Python API is consumed there.
 - [ ] Add local-only AnkiConnect helper as a separate optional module; do not make the remote server talk to local Anki directly.
 

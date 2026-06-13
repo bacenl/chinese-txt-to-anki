@@ -32,3 +32,13 @@ Next implementation tasks:
 - [ ] Add `--json` output mode for machine-readable CLI integration.
 - [ ] Add retries/backoff and per-chunk failure reporting.
 - [ ] Update Hermes dashboard integration to import `generate_cards()` directly instead of parsing stdout.
+
+## 2026-06-13 — Supply chain security hardening
+
+- [x] Reviewed Lawrence Lee's supply-chain security guidance and applied repo-relevant practices.
+- [x] Added upper bounds to direct runtime dependencies in `pyproject.toml`.
+- [x] Added upper bound to the build backend requirement.
+- [x] Regenerated `uv.lock` using a 7-day age gate: `UV_EXCLUDE_NEWER=$(date -d '7 days ago' -u +%Y-%m-%dT00:00:00Z) uv lock`.
+- [x] Added `docs/SUPPLY_CHAIN_SECURITY.md` with local policy, commands, mdanki caveats, and incident-response notes.
+- [x] Linked the supply-chain notes from `README.md` setup instructions.
+- [x] Verification run: `UV_EXCLUDE_NEWER=$(date -d '7 days ago' -u +%Y-%m-%dT00:00:00Z) uv lock --check`, `uv sync --frozen`, `uv run pytest tests/test_pipeline.py -q`, and `uv run anki-gen --help`.

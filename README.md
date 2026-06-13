@@ -88,8 +88,11 @@ pip install -r requirements.txt
 5. Install [`mdanki`](https://github.com/ashlinchak/mdanki) (Node.js, required for `.apkg` generation):
 
 ```bash
+# Prefer a reviewed pinned version if you know the version you want.
 npm install -g mdanki
 ```
+
+Supply-chain note: keep `uv.lock` committed, use `uv sync --frozen`, and see `docs/SUPPLY_CHAIN_SECURITY.md` before changing dependencies or globally installed tools.
 
 ## Usage
 
