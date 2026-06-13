@@ -30,8 +30,9 @@ This is good enough for manual CLI use, but weak for a dashboard/app because std
 - [x] Added provider injection so app code can pass any callable `provider(words) -> markdown`.
 - [x] Added `src/providers.py` with an OpenAI-compatible provider adapter using env-configurable `MODEL_BASE_URL` and `MODEL_NAME` while preserving DeepSeek defaults.
 - [x] Added `--chunk-size` and `--max-workers` CLI flags.
-- [x] Added pytest coverage for structured artifacts, history filtering, order preservation, and concurrent worker mode.
+- [x] Added pytest coverage for structured artifacts, history filtering, order preservation, concurrent worker mode, retry behavior, partial failure reporting, and endpoint-safe JSON payloads.
 - [x] Kept the dashboard-compatible CLI path working: `uv run anki-gen --input <words.txt> --deck-name <deck>`.
+- [x] Added `--json`, `--retry-attempts`, `--retry-backoff-seconds`, and `--continue-on-error` for app integrations.
 
 ## Implementation Tasks
 
@@ -125,7 +126,7 @@ result = generate_cards(
 
 Return `result.apkg_files` to the browser/dashboard. Do not infer generated files from stdout.
 
-**Next app-facing task:** Add `--json` output mode that serializes `GenerationResult` so non-Python callers can use the same structured contract.
+**Done:** `--json` serializes `GenerationResult.to_dict()` so non-Python callers can use the same structured contract.
 
 ### Task 5: Reliability and safety follow-ups
 
@@ -133,10 +134,11 @@ Return `result.apkg_files` to the browser/dashboard. Do not infer generated file
 
 **Todo:**
 
-- [ ] Add `--json` CLI mode for structured machine-readable output.
-- [ ] Add retry/backoff around model calls with clear per-chunk failure reporting.
+- [x] Add `--json` CLI mode for structured machine-readable output.
+- [x] Add retry/backoff around model calls with clear per-chunk failure reporting.
 - [x] Add provider key fallback from `MODEL_API_KEY` to `DEEPSEEK_API_KEY`.
 - [x] Add `.env.example` entries for `MODEL_BASE_URL`, `MODEL_NAME`, and `MODEL_API_KEY`.
+- [x] Add provider generation knobs for `MODEL_TEMPERATURE` and `MODEL_MAX_TOKENS`.
 - [x] Add exact dependency upper bounds in `pyproject.toml` (`openai>=1,<2`, `python-dotenv>=1,<2`) and refresh lockfile if present.
 - [ ] Add direct in-process dashboard integration in Hermes after this repo's Python API is consumed there.
 - [ ] Add local-only AnkiConnect helper as a separate optional module; do not make the remote server talk to local Anki directly.

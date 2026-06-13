@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
+import time
 from typing import Callable, Sequence
 
 from .processing import CHUNKS_PER_FILE, chunk_list, generate_anki_deck, save_md_file
@@ -26,6 +27,32 @@ class GenerationOptions:
     history_path: str | Path = ".cache/history.txt"
     ignore_history: bool = False
     max_workers: int = 1
+    retry_attempts: int = 1
+    retry_backoff_seconds: float = 1.0
+    continue_on_error: bool = False
+
+
+@dataclass(frozen=True)
+class FailedChunk:
+    """Details for one model chunk that failed after all retry attempts."""
+
+    words: list[str]
+    error: str
+    attempts: int
+
+    def to_dict(self) -> dict[str, object]:
+        return {
+            "words": self.words,
+            "error": self.error,
+            "attempts": self.attempts,
+        }
+
+
+@dataclass(frozen=True)
+class _ChunkResult:
+    words: list[str]
+    content: str | None = None
+    failure: FailedChunk | None = None
 
 
 @dataclass(frozen=True)
@@ -38,7 +65,21 @@ class GenerationResult:
     apkg_files: list[Path]
     output_markdown_dir: Path
     output_anki_dir: Path
-    failed_chunks: list[list[str]] = field(default_factory=list)
+    failed_chunks: list[FailedChunk] = field(default_factory=list)
+
+    def to_dict(self) -> dict[str, object]:
+        """Serialize the generation result for app endpoints and CLI JSON output."""
+
+        return {
+            "ok": not self.failed_chunks,
+            "processed_words": self.processed_words,
+            "skipped_words": self.skipped_words,
+            "markdown_files": [str(path) for path in self.markdown_files],
+            "apkg_files": [str(path) for path in self.apkg_files],
+            "output_markdown_dir": str(self.output_markdown_dir),
+            "output_anki_dir": str(self.output_anki_dir),
+            "failed_chunks": [chunk.to_dict() for chunk in self.failed_chunks],
+        }
 
 
 def read_words(input_path: str | Path) -> list[str]:
@@ -82,21 +123,69 @@ def _make_output_dirs(markdown_root: str | Path, anki_root: str | Path) -> tuple
     return md_dir, apkg_dir
 
 
-def _call_provider_ordered(chunks: list[list[str]], provider: Provider, max_workers: int) -> list[str]:
+def _call_provider_with_retries(
+    chunk: list[str],
+    provider: Provider,
+    retry_attempts: int,
+    retry_backoff_seconds: float,
+) -> _ChunkResult:
+    """Call a provider for one chunk, retrying transient failures."""
+
+    last_error: Exception | None = None
+    for attempt in range(1, retry_attempts + 1):
+        try:
+            return _ChunkResult(words=chunk, content=provider(chunk))
+        except Exception as exc:  # noqa: BLE001 - preserve provider error details for callers
+            last_error = exc
+            if attempt < retry_attempts and retry_backoff_seconds > 0:
+                time.sleep(retry_backoff_seconds * attempt)
+
+    assert last_error is not None
+    return _ChunkResult(
+        words=chunk,
+        failure=FailedChunk(
+            words=chunk,
+            error=str(last_error),
+            attempts=retry_attempts,
+        ),
+    )
+
+
+def _call_provider_ordered(
+    chunks: list[list[str]],
+    provider: Provider,
+    max_workers: int,
+    retry_attempts: int,
+    retry_backoff_seconds: float,
+    continue_on_error: bool,
+) -> list[_ChunkResult]:
     """Call the provider sequentially or concurrently while preserving chunk order."""
 
-    if max_workers <= 1 or len(chunks) <= 1:
-        return [provider(chunk) for chunk in chunks]
+    def call(chunk: list[str]) -> _ChunkResult:
+        result = _call_provider_with_retries(
+            chunk,
+            provider,
+            retry_attempts,
+            retry_backoff_seconds,
+        )
+        if result.failure and not continue_on_error:
+            raise RuntimeError(
+                f"model provider failed for chunk {result.failure.words}: {result.failure.error}"
+            )
+        return result
 
-    results: list[str | None] = [None] * len(chunks)
+    if max_workers <= 1 or len(chunks) <= 1:
+        return [call(chunk) for chunk in chunks]
+
+    results: list[_ChunkResult | None] = [None] * len(chunks)
     with ThreadPoolExecutor(max_workers=max_workers) as executor:
         futures = {
-            executor.submit(provider, chunk): index for index, chunk in enumerate(chunks)
+            executor.submit(call, chunk): index for index, chunk in enumerate(chunks)
         }
         for future in as_completed(futures):
             results[futures[future]] = future.result()
 
-    return [result or "" for result in results]
+    return [result for result in results if result is not None]
 
 
 def generate_cards(
@@ -116,6 +205,10 @@ def generate_cards(
         raise ValueError("chunks_per_file must be greater than zero")
     if options.max_workers <= 0:
         raise ValueError("max_workers must be greater than zero")
+    if options.retry_attempts <= 0:
+        raise ValueError("retry_attempts must be greater than zero")
+    if options.retry_backoff_seconds < 0:
+        raise ValueError("retry_backoff_seconds cannot be negative")
 
     words = read_words(options.input_path)
     history = set() if options.ignore_history else load_history(options.history_path)
@@ -134,19 +227,29 @@ def generate_cards(
         )
 
     chunks = chunk_list(pending_words, options.chunk_size)
-    responses = _call_provider_ordered(chunks, provider, options.max_workers)
+    chunk_results = _call_provider_ordered(
+        chunks,
+        provider,
+        options.max_workers,
+        options.retry_attempts,
+        options.retry_backoff_seconds,
+        options.continue_on_error,
+    )
 
     markdown_files: list[Path] = []
     apkg_files: list[Path] = []
     processed_words: list[str] = []
 
+    failed_chunks = [result.failure for result in chunk_results if result.failure]
+    successful_results = [result for result in chunk_results if result.content is not None]
+
     for file_index, first_chunk_index in enumerate(
-        range(0, len(chunks), options.chunks_per_file), start=1
+        range(0, len(successful_results), options.chunks_per_file), start=1
     ):
         last_chunk_index = first_chunk_index + options.chunks_per_file
-        batch_chunks = chunks[first_chunk_index:last_chunk_index]
-        batch_responses = responses[first_chunk_index:last_chunk_index]
-        batch_words = [word for chunk in batch_chunks for word in chunk]
+        batch_results = successful_results[first_chunk_index:last_chunk_index]
+        batch_responses = [result.content or "" for result in batch_results]
+        batch_words = [word for result in batch_results for word in result.words]
 
         md_file = md_dir / f"output_{file_index}.md"
         apkg_file = apkg_dir / f"output_{file_index}.apkg"
@@ -167,4 +270,5 @@ def generate_cards(
         apkg_files=apkg_files,
         output_markdown_dir=md_dir,
         output_anki_dir=apkg_dir,
+        failed_chunks=failed_chunks,
     )

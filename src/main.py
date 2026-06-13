@@ -1,6 +1,7 @@
 """Main entry point for Anki card generator."""
 
 import argparse
+import json
 import os
 import sys
 from pathlib import Path
@@ -75,6 +76,28 @@ def parse_arguments() -> argparse.Namespace:
         default=1,
         help="Concurrent model requests to run (default: 1)",
     )
+    parser.add_argument(
+        "--retry-attempts",
+        type=int,
+        default=1,
+        help="Attempts per model request before failing or reporting the chunk (default: 1)",
+    )
+    parser.add_argument(
+        "--retry-backoff-seconds",
+        type=float,
+        default=1.0,
+        help="Linear backoff seconds between model request retries (default: 1.0)",
+    )
+    parser.add_argument(
+        "--continue-on-error",
+        action="store_true",
+        help="Continue generating successful chunks and report failed chunks",
+    )
+    parser.add_argument(
+        "--json",
+        action="store_true",
+        help="Print machine-readable GenerationResult JSON for app integrations",
+    )
 
     return parser.parse_args()
 
@@ -111,7 +134,11 @@ def main() -> None:
         return
 
     if not args.input:
-        print("Error: input file is required. Set INPUT_TXT_PATH or pass --input")
+        message = "input file is required. Set INPUT_TXT_PATH or pass --input"
+        if args.json:
+            print(json.dumps({"ok": False, "error": message}))
+        else:
+            print(f"Error: {message}")
         sys.exit(1)
 
     try:
@@ -126,12 +153,22 @@ def main() -> None:
                 chunk_size=args.chunk_size,
                 ignore_history=args.ignore_history,
                 max_workers=args.max_workers,
+                retry_attempts=args.retry_attempts,
+                retry_backoff_seconds=args.retry_backoff_seconds,
+                continue_on_error=args.continue_on_error,
             ),
             provider=provider,
         )
     except Exception as exc:
-        print(f"Error: {exc}")
+        if args.json:
+            print(json.dumps({"ok": False, "error": str(exc)}, ensure_ascii=False))
+        else:
+            print(f"Error: {exc}")
         sys.exit(1)
+
+    if args.json:
+        print(json.dumps(result.to_dict(), ensure_ascii=False))
+        return
 
     if result.skipped_words:
         print(f"Filtered out {len(result.skipped_words)} previously parsed words:")

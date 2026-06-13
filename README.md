@@ -45,6 +45,8 @@ git clone https://github.com/bacenl/chinese-txt-to-anki ~/YOUR/PATH/HERE
 MODEL_API_KEY=your_api_key_here
 MODEL_BASE_URL=https://api.deepseek.com
 MODEL_NAME=deepseek-chat
+MODEL_TEMPERATURE=
+MODEL_MAX_TOKENS=
 
 # Backwards-compatible alias for older setups; prefer MODEL_API_KEY for new configs.
 DEEPSEEK_API_KEY=
@@ -117,6 +119,9 @@ uv run anki-gen --ignore-history
 
 # Tune model request batching and opt into parallel requests
 uv run anki-gen --chunk-size 6 --max-workers 2
+
+# Machine-readable output for dashboards/apps, with retry and partial-failure reporting
+uv run anki-gen --json --retry-attempts 3 --retry-backoff-seconds 1 --continue-on-error
 ```
 
 </details>
@@ -164,8 +169,38 @@ python -m src.main --ignore-history
 | `--deck-name` | `-d` | Anki deck name (default: `Chinese Vocabulary`) |
 | `--chunk-size` | | Words per model request (default: `6`) |
 | `--max-workers` | | Concurrent model requests (default: `1`; raise carefully to avoid rate limits) |
+| `--retry-attempts` | | Attempts per model request before failing/reporting the chunk (default: `1`) |
+| `--retry-backoff-seconds` | | Linear backoff seconds between retry attempts (default: `1.0`) |
+| `--continue-on-error` | | Generate successful chunks and report failed chunks instead of fail-fast |
+| `--json` | | Print machine-readable `GenerationResult` JSON for app integrations |
 
 Output is organized into timestamped subdirectories under `io/output_md/` and `io/output_apkg/`.
+
+### App integration contract
+
+Prefer the importable Python API when the caller is Python; use `--json` when shelling out from another app. Both expose the same structured fields:
+
+```python
+from src.pipeline import GenerationOptions, generate_cards
+from src.providers import OpenAICompatibleProvider
+
+result = generate_cards(
+    GenerationOptions(
+        input_path="/tmp/words.txt",
+        markdown_root="/tmp/chinese-anki/md",
+        anki_root="/tmp/chinese-anki/apkg",
+        deck_name="Chinese Vocabulary",
+        chunk_size=6,
+        max_workers=2,
+        retry_attempts=3,
+        continue_on_error=True,
+    ),
+    provider=OpenAICompatibleProvider.from_env(),
+)
+payload = result.to_dict()
+```
+
+The JSON payload includes `ok`, `processed_words`, `skipped_words`, `markdown_files`, `apkg_files`, output directories, and `failed_chunks` with `{words, error, attempts}` entries. Apps should use these fields rather than scraping human stdout.
 
 ## Prompt
 
@@ -174,8 +209,8 @@ The prompt used to generate card content lives in `io/prompt.txt`. Feel free to 
 ## Future work
 
 - **Hermes dashboard integration** — exposed through the Hermes Personal Workspace Chinese Anki tab with paste-to-generate, batch history, `.apkg` download, and AnkiConnect probing. Next step: direct add-note/import action after AnkiConnect CORS is confirmed in the local browser.
-- **Machine-readable CLI output** — add `--json` so non-Python callers can consume structured paths without stdout scraping.
-- **Model flexibility** — `MODEL_BASE_URL` and `MODEL_NAME` support OpenAI-compatible providers; next step is documenting tested provider presets and adding local-model/Ollama examples.
+- **Machine-readable CLI output** — `--json` lets non-Python callers consume structured paths without stdout scraping.
+- **Model flexibility** — `MODEL_BASE_URL` and `MODEL_NAME` support OpenAI-compatible providers; `MODEL_TEMPERATURE` and `MODEL_MAX_TOKENS` expose common generation knobs. For local Ollama, use its OpenAI-compatible endpoint, for example `MODEL_BASE_URL=http://localhost:11434/v1`, `MODEL_NAME=<local-model>`, and any placeholder `MODEL_API_KEY` expected by the client.
 
 ## License
 

@@ -33,6 +33,28 @@ Next implementation tasks:
 - [ ] Add retries/backoff and per-chunk failure reporting.
 - [ ] Update Hermes dashboard integration to import `generate_cards()` directly instead of parsing stdout.
 
+## 2026-06-13 — App-facing reliability and endpoint pass
+
+Planned subtasks:
+
+- [x] Add machine-readable serialization for `GenerationResult` and CLI `--json` output.
+- [x] Add configurable provider retry/backoff with per-chunk failure metadata.
+- [x] Add tests for endpoint-safe JSON, provider config knobs, and retry behavior.
+- [x] Update README/PLAN with the app interaction contract and model/throughput controls.
+- [x] Run tests/smoke checks and commit changes atomically.
+
+Verification:
+
+- `uv run pytest tests/test_pipeline.py -q` → 10 passed.
+- `uv run anki-gen --help` shows endpoint/retry flags.
+- `git diff --check` passed.
+
+Notes:
+
+- `GenerationResult.to_dict()` now serializes paths and failed chunks for dashboards/apps.
+- CLI now accepts `--json`, `--retry-attempts`, `--retry-backoff-seconds`, and `--continue-on-error`.
+- Provider config now reads `MODEL_TEMPERATURE` and `MODEL_MAX_TOKENS` in addition to API key/base URL/model.
+
 ## 2026-06-13 — Supply chain security hardening
 
 - [x] Reviewed Lawrence Lee's supply-chain security guidance and applied repo-relevant practices.
