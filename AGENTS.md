@@ -1,149 +1,29 @@
-# AGENTS.md - Chinese to Anki Card Generator
+Please refer to `README.md`, `docs/PLAN.md` and `docs/IMPLEMENTATION.md` if they exist for all project-specific details.
+This `AGENTS.md`/`CLAUDE.md` is specifically for ground rules, process and behavior notes.
 
-This file provides essential guidelines for agentic coding agents working on this Chinese Markdown to Anki card generator project.
+## General
+- Treat our docs/ as the source of truth and always prioritize keeping them up to date.
+- All work should be logged into the `docs/IMPLEMENTATION.md`. Multiple Agents will be coordinating, so please be careful and sensitive to others' work. Prefer to append/patch the shared docs to not step over others. Each agent will usually be responsible for working on specific tasks/features, coordinated by the user/operator that we will refer to as the Lead.
+- When assigned a task, work independently on that task until fully complete. When appropriate it's best to test before writing code to ensure everything is working as expected, and then to document the progress when complete. Any outstanding issues (implementation details, ambiguities, etc) can be addressed with the Lead once the basic task is complete.
+- If you have a task/subtask list and start working on it log it with empty checkboxes into `docs/IMPLEMENTATION.md` - and update after each finished (sub)task. When you think you are done make sure to recheck your changes cover all tasks.
+- If you run into permissions issues or other blockers, stop immediately and request the Lead to resolve or give further direction.
+- We use conda/mamba environments and it's important to use `mamba run` in the proper environment. Be sure to run scripts/tests in the appropriate environment.
 
-## Project Overview
+## Shared Workflow Expectations
+- **Before picking up work:** skim the latest updates (git log/status/diff can help for tracking updates); confirm open checkboxes in our IMPLEMENTATION.md aligns with your plan.
+- **During execution:** leave concise breadcrumbs (commands run, datasets touched, intermediate outputs) in the IMPLEMENTATION. Our goal is to be able to refer to our docs and be able to pick back up easily.
+- **After changes:** reflect status in IMPLEMENTATION.md (check/annotate items), note deliverables or blockers here under a dated section.
+- Sometimes the Lead will request a feature-specific PLAN/IMPLEMENTATION - in that case, create detailed updates in the task-specific docs, but leave a pointer in the global docs as well.
 
-This Python project generates Anki flashcards from Chinese vocabulary using the DeepSeek API. It processes Chinese words in chunks, generates detailed markdown content with linguistic analysis, and converts it to Anki-compatible `.apkg` files using the external `mdanki` tool.
+## Coordination and Committing
+- Keep filenames ASCII and avoid destructive git actions, be *very* specific when making edits or commits to avoid trampling on others' work.
+- We often have nested or multiple repos (not a mono-repo) so always be aware of what path you are in and what repo you're working in. When in doubt, double-check.
+- You will only commit updates after review with the Lead (or if the Lead has pre-approved).
+- Whenever checking in code it's VERY IMPORTANT to only add individual files to our commits so we don't accidentally add temporary or other agent's work, just our own.
+- Commit messages should be concise - a one line summary, with bullet points for major features/changes. **CLAUDE ESPECIALLY**: do not include extra footers or authorship BS in your commit logs.
+- When committing, we should commit files grouped by task (eg, separate commits for each task).
+- If there is any confusion, flag the Lead for further instruction.
+- When asked to tag a release never use `git push origin --tags` - always explicitly name the tag that should get pushed `git push origin <tag_name>`.
 
-## Development Environment
-
-- **Python**: >=3.11 (as specified in pyproject.toml)
-- **Package Manager**: Uses both `requirements.txt` and `pyproject.toml` (uv.lock indicates modern tooling)
-- **Virtual Environment**: Located in `.venv/` (already set up)
-
-## Build & Run Commands
-
-### Core Commands
-```bash
-# Install dependencies
-pip install -r requirements.txt
-# OR with uv (if available)
-uv sync
-
-# Run main application
-python src/main.py
-
-# Run with specific arguments
-python src/main.py --input custom_words.txt --output custom_deck.apkg
-
-# Skip API calls (use existing markdown)
-python src/main.py --no-api
-
-# Skip history filtering
-python src/main.py --skip-history
-```
-
-### Testing Commands
-```bash
-# No formal test suite currently exists
-# Manual testing workflow:
-python src/main.py --help  # Test argument parsing
-python src/main.py --no-api  # Test with existing files
-```
-
-### External Dependencies
-```bash
-# Required external tool (Node.js package)
-npm install -g mdanki
-# Ensure Node.js is installed for Anki deck generation
-```
-
-## Code Style Guidelines
-
-### Import Organization
-- Standard library imports first, then third-party, then local imports
-- Use `from .module import function` for relative imports within the `src/` package
-- Environment variable loading with `python-dotenv` should be done at module level
-
-```python
-# Standard library
-import os
-import sys
-import argparse
-from datetime import datetime
-
-# Third-party
-from openai import OpenAI
-from dotenv import load_dotenv
-
-# Local imports
-from .api import create_prompt, call_deepseek_api
-from .processing import CHUNKS_PER_FILE, read_txt_file
-```
-
-### Type Hints
-- All functions should have complete type annotations
-- Use Python 3.11+ syntax: `list[str]`, `tuple[str, str]`, `set[str]`
-- Return types explicitly declared even for `None`
-
-```python
-def process_words(words: list[str], chunk_size: int = 6) -> tuple[list[list[str]], int]:
-    """Process words into chunks and return chunks with total count."""
-    chunks = chunk_list(words, chunk_size)
-    return chunks, len(words)
-```
-
-### Function Documentation
-- Every function needs a docstring following the pattern shown in existing code
-- Include Args, Returns, and Example sections
-- Use triple quotes with consistent formatting
-
-### Naming Conventions
-- **Constants**: `UPPER_SNAKE_CASE` (e.g., `CHUNKS_PER_FILE`, `DEEPSEEK_API_KEY`)
-- **Functions**: `snake_case` with descriptive names
-- **Variables**: `snake_case`, prefer clarity over brevity
-- **Private functions**: Use leading underscore only if truly internal
-
-### Error Handling
-- Use descriptive error messages with context
-- Include file paths and operation details in error messages
-- Graceful degradation for optional external dependencies
-- Environment variable validation at startup
-
-```python
-if not DEEPSEEK_API_KEY:
-    print("Error: Please set DEEPSEEK_API_KEY environment variable")
-    sys.exit(1)
-```
-
-### Environment Variables
-All configuration through `.env` file:
-- `INPUT_TXT_PATH`: Default input file location
-- `OUTPUT_MD_PATH`: Default markdown output path  
-- `OUTPUT_ANKI_PATH`: Default Anki package output path
-- `DEEPSEEK_API_KEY`: API authentication key
-- `PROMPT_PATH`: Location of prompt template file
-
-### File Structure & Patterns
-- **Main entry point**: `src/main.py` with argument parsing and orchestration
-- **API interactions**: `src/api.py` for external service calls
-- **File processing**: `src/processing.py` for file I/O and Anki generation
-- **Caching**: `src/cache.py` for history management
-- **Output**: Timestamped folders in `io/output_md/` and `io/output_apkg/`
-
-### Code Organization Principles
-- Single responsibility per module
-- Configuration centralized through environment variables
-- Chunking strategy for API rate limit management (6 words per chunk, 8 chunks per file)
-- History tracking to avoid reprocessing words
-- Immediate history saves after successful API calls
-
-### Integration Notes
-- **External dependency**: `mdanki` tool must be available in PATH
-- **Subprocess usage**: Used only for `mdanki` calls with proper error handling
-- **File encoding**: Always use UTF-8 for Chinese text handling
-- **Atomic operations**: Save to history immediately after successful processing
-
-### Development Workflow
-1. Test argument parsing with `--help`
-2. Validate environment variables are set
-3. Test `--no-api` mode with existing markdown files
-4. Test full pipeline with small input files
-5. Verify Anki package generation with `mdanki` availability
-
-## Key Constants to Remember
-- `CHUNKS_PER_FILE = 8`: Number of chunks before creating new files
-- Default chunk size: 6 words per API call
-- Cache directory: `.cache/history.txt`
-- Default deck name: "Chinese Vocabulary"
+## Discussion Style
+- When the user asks to discuss items "one by one", "one at a time", or "one after the other": present only the FIRST item, then STOP and wait for the user's response before presenting the next. Do not dump all items upfront. This applies to review findings, issue lists, design decisions, etc.
