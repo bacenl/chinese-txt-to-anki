@@ -73,3 +73,15 @@ Notes:
   - Phase 3: App integration (FastAPI endpoint, Hermes dashboard integration contract, AnkiConnect helper)
   - Phase 4: Polish & packaging (typed TOML config, dead code cleanup, CI/lint/pre-commit, webhook callback)
 - [ ] Implementation deferred — plan ready for task-by-task execution.
+
+## 2026-06-27 — v1 planning docs created
+
+- [x] Reviewed `docs/PLAN.md` and identified sequencing issues, security gap, low-ROI tasks, and missing concerns.
+- [x] Created `planning/v1/PLAN.md` — revised plan incorporating:
+  - Phase 0 (Foundations): CI + type checking first; dead code removal before new features
+  - Tasks 1.1 and 1.2 (provider package refactor + registry) merged to avoid unrunnable in-between state
+  - Path traversal sanitization note added to download endpoint
+  - Integration test gating strategy documented (env var per external service)
+  - Type checking (mypy) added alongside ruff in CI task
+  - Streaming (D1) and webhook/task-queue (D2) explicitly deferred with rationale
+- [x] Created `planning/v1/IMPLEMENTATION.md` — punchlist with pre-analysis, per-task checkboxes, milestone close checklist, and worklog.
