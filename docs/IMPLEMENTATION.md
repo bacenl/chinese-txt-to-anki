@@ -64,3 +64,12 @@ Notes:
 - [x] Added `docs/SUPPLY_CHAIN_SECURITY.md` with local policy, commands, mdanki caveats, and incident-response notes.
 - [x] Linked the supply-chain notes from `README.md` setup instructions.
 - [x] Verification run: `UV_EXCLUDE_NEWER=$(date -d '7 days ago' -u +%Y-%m-%dT00:00:00Z) uv lock --check`, `uv sync --frozen`, `uv run pytest tests/test_pipeline.py -q`, and `uv run anki-gen --help`.
+
+## 2026-06-27 — Next-phase improvement plan drafted
+
+- [x] Replaced `docs/PLAN.md` with the comprehensive next-phase plan covering:
+  - Phase 1: Provider ecosystem (dynamic registry, Ollama example, injectable prompt template)
+  - Phase 2: Throughput & reliability (async pipeline, rate-limit-aware scheduler, incremental history, streaming)
+  - Phase 3: App integration (FastAPI endpoint, Hermes dashboard integration contract, AnkiConnect helper)
+  - Phase 4: Polish & packaging (typed TOML config, dead code cleanup, CI/lint/pre-commit, webhook callback)
+- [ ] Implementation deferred — plan ready for task-by-task execution.
