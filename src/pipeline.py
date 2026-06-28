@@ -30,6 +30,7 @@ class GenerationOptions:
     retry_attempts: int = 1
     retry_backoff_seconds: float = 1.0
     continue_on_error: bool = False
+    prompt_template: str = ""
 
 
 @dataclass(frozen=True)
@@ -128,13 +129,18 @@ def _call_provider_with_retries(
     provider: Provider,
     retry_attempts: int,
     retry_backoff_seconds: float,
+    prompt_template: str = "",
 ) -> _ChunkResult:
     """Call a provider for one chunk, retrying transient failures."""
 
     last_error: Exception | None = None
     for attempt in range(1, retry_attempts + 1):
         try:
-            return _ChunkResult(words=chunk, content=provider(chunk))
+            if prompt_template:
+                content = provider(chunk, template=prompt_template)  # type: ignore[call-arg]
+            else:
+                content = provider(chunk)
+            return _ChunkResult(words=chunk, content=content)
         except Exception as exc:  # noqa: BLE001 - preserve provider error details for callers
             last_error = exc
             if attempt < retry_attempts and retry_backoff_seconds > 0:
@@ -158,6 +164,7 @@ def _call_provider_ordered(
     retry_attempts: int,
     retry_backoff_seconds: float,
     continue_on_error: bool,
+    prompt_template: str = "",
 ) -> list[_ChunkResult]:
     """Call the provider sequentially or concurrently while preserving chunk order."""
 
@@ -167,6 +174,7 @@ def _call_provider_ordered(
             provider,
             retry_attempts,
             retry_backoff_seconds,
+            prompt_template,
         )
         if result.failure and not continue_on_error:
             raise RuntimeError(
@@ -234,6 +242,7 @@ def generate_cards(
         options.retry_attempts,
         options.retry_backoff_seconds,
         options.continue_on_error,
+        options.prompt_template,
     )
 
     markdown_files: list[Path] = []
@@ -255,10 +264,10 @@ def generate_cards(
         apkg_file = apkg_dir / f"output_{file_index}.apkg"
         save_md_file("\n\n".join(batch_responses), str(md_file), "w")
 
+        append_history(options.history_path, batch_words)
+
         if not deck_generator(str(md_file), str(apkg_file), options.deck_name):
             raise RuntimeError(f"failed to generate Anki deck for {md_file}")
-
-        append_history(options.history_path, batch_words)
         processed_words.extend(batch_words)
         markdown_files.append(md_file)
         apkg_files.append(apkg_file)

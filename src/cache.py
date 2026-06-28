@@ -1,4 +1,4 @@
-"""Cache module for managing word history."""
+"""Cache module (deprecated) — use pipeline.load_history / pipeline.append_history instead."""
 
 import os
 

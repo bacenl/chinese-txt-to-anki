@@ -1,0 +1,21 @@
+[provider]
+name = "deepseek"
+model = "deepseek-chat"
+temperature = 0.1
+max_tokens = 4096
+api_key = "env:MODEL_API_KEY"  # resolved from env var at load time
+
+[pipeline]
+chunk_size = 6
+max_workers = 2
+retry_attempts = 3
+continue_on_error = true
+
+[output]
+markdown_root = "io/output_md"
+anki_root = "io/output_apkg"
+
+[anki_connect]
+enabled = false
+host = "127.0.0.1"
+port = 8765

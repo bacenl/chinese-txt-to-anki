@@ -227,6 +227,80 @@ def test_openai_compatible_provider_requires_api_key(monkeypatch):
         OpenAICompatibleProvider.from_env()
 
 
+def test_custom_prompt_template_is_forwarded_to_provider(tmp_path):
+    """GenerationOptions.prompt_template is passed through to the provider call."""
+    input_file = tmp_path / "words.txt"
+    write_words(input_file, ["你好", "谢谢"])
+
+    received_templates: list[str] = []
+
+    def capturing_provider(words: list[str], template: str = "") -> str:
+        received_templates.append(template)
+        return "\n".join(f"# {w}" for w in words)
+
+    def fake_deck_generator(md_file: str, apkg_file: str, deck_name: str) -> bool:
+        Path(apkg_file).touch()
+        return True
+
+    generate_cards(
+        GenerationOptions(
+            input_path=input_file,
+            markdown_root=tmp_path / "md",
+            anki_root=tmp_path / "apkg",
+            history_path=tmp_path / "history.txt",
+            ignore_history=True,
+            chunk_size=10,
+            prompt_template="Please define: {words_text}",
+        ),
+        provider=capturing_provider,
+        deck_generator=fake_deck_generator,
+    )
+
+    assert all(t == "Please define: {words_text}" for t in received_templates)
+    assert len(received_templates) >= 1
+
+
+def test_history_is_written_before_deck_generation(tmp_path):
+    """Words are persisted to history immediately after provider response.
+
+    If deck generation fails, the words should already be in history so they
+    are not re-processed on the next run.
+    """
+    input_file = tmp_path / "words.txt"
+    write_words(input_file, ["你好"])
+    history_file = tmp_path / "history.txt"
+
+    history_written_at_deck_time: list[bool] = []
+
+    def fake_provider(words: list[str]) -> str:
+        return "# 你好"
+
+    def checking_deck_generator(md_file: str, apkg_file: str, deck_name: str) -> bool:
+        # History must already contain the word by the time deck generation runs
+        if history_file.exists():
+            history_written_at_deck_time.append(
+                "你好" in history_file.read_text(encoding="utf-8")
+            )
+        else:
+            history_written_at_deck_time.append(False)
+        Path(apkg_file).touch()
+        return True
+
+    generate_cards(
+        GenerationOptions(
+            input_path=input_file,
+            markdown_root=tmp_path / "md",
+            anki_root=tmp_path / "apkg",
+            history_path=history_file,
+            ignore_history=True,
+        ),
+        provider=fake_provider,
+        deck_generator=checking_deck_generator,
+    )
+
+    assert history_written_at_deck_time == [True]
+
+
 def test_parse_arguments_accepts_endpoint_and_reliability_flags(monkeypatch):
     monkeypatch.setattr(
         "sys.argv",

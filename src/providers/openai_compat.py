@@ -1,4 +1,4 @@
-"""Model provider adapters for card generation."""
+"""OpenAI-compatible chat completions provider."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from typing import Any
 
 from openai import OpenAI
 
-from .api import create_prompt
+from ..api import create_prompt
 
 
 @dataclass(frozen=True)
@@ -45,7 +45,6 @@ class OpenAICompatibleProvider:
         `MODEL_API_KEY` is the provider-neutral name. `DEEPSEEK_API_KEY`
         remains supported for existing local setups.
         """
-
         api_key = os.getenv(api_key_env) or os.getenv(fallback_api_key_env)
         if not api_key:
             raise ValueError(
@@ -63,12 +62,16 @@ class OpenAICompatibleProvider:
             )
         )
 
-    def __call__(self, words: list[str]) -> str:
+    def __call__(self, words: list[str], template: str = "") -> str:
         """Generate markdown card content for one chunk of vocab words."""
+        if template:
+            prompt = template.replace("{words_text}", "\n".join(words))
+        else:
+            prompt = create_prompt(words)
 
         request: dict[str, Any] = {
             "model": self.config.model,
-            "messages": [{"role": "user", "content": create_prompt(words)}],
+            "messages": [{"role": "user", "content": prompt}],
             "stream": False,
         }
         if self.config.temperature is not None:
